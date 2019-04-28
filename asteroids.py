@@ -6,21 +6,22 @@ import random
 from random import randrange
 import os
 
-# Konstanty
+# konstanty
 SIRKA = 800
 VYSKA = 600
-RYCHLOST_OTACENI = 360
-AKCELERACE = 200
+RYCHLOST_OTACENI = 360  # stupně/s
+AKCELERACE = 200  # pixely/s
 
-# Soubory obrázků
+# obrázky objektů
 obrazek_lodi = 'ship.png'
 asteroidy_slozka = 'Meteors\\'
 asteroidy = []
 
-# Globální proměnné
-objekty = []  # globální seznam objektů
-lode = []
+# globální proměnné
+lode = []  # seznam lodí
+objekty = []  # seznam dalších objektů
 stisknute_klavesy = set()  # sada stisknutych klaves
+
 batch = pyglet.graphics.Batch()  # kolekce s objekty pro vykreslení
 
 
@@ -32,6 +33,7 @@ class VesmirnyObjekt:
         # nastavní "kotvy" obrázku na střed
         obrazek.anchor_x = obrazek.width // 2
         obrazek.anchor_y = obrazek.height // 2
+        # výpočet poloměru objektu
         self.radius = (obrazek.width + obrazek.height) // 4
         self.sprite = pyglet.sprite.Sprite(
             obrazek, self.x,
@@ -70,7 +72,7 @@ class Asteroid(VesmirnyObjekt):
         else:
             self.x = 0
             self.y = randrange(0, VYSKA)
-        # výběr náhodného asteroidu ze  seznamu
+        # výběr náhodného obrázku ze seznamu
         super().__init__(random.choice(asteroidy))
 
     def tick(self, dt):
@@ -119,13 +121,9 @@ def vykresli_scenu():
 
     for x_offset in (-window.width, 0, window.width):
         for y_offset in (-window.height, 0, window.height):
-            # Remember the current state
             gl.glPushMatrix()
-            # Move everything drawn from now on by (x_offset, y_offset, 0)
             gl.glTranslatef(x_offset, y_offset, 0)
-            # Draw
             batch.draw()
-            # Restore remembered state (this cancels the glTranslatef)
             gl.glPopMatrix()
 
 
@@ -156,14 +154,7 @@ def obnov_stav(dt):
         objekt.tick(dt)
     for objekt in objekty:
         objekt.tick(dt)
-"""
-    for objekt in objekty:
-        vzdalenost_x = abs(objekt.x - lod.x)
-        vzdalenost_y = abs(objekt.y - lod.y)
-        vzdalenost = math.sqrt(vzdalenost_x**2 + vzdalenost_y**2)
-        if vzdalenost < abs(objekt.radius + lod.radius):
-            objekt.delete()
-"""
+
 
 # načtení všech asteroidů z adresáře do seznamu
 # r=root, d=directories, f = files
@@ -171,10 +162,10 @@ for r, d, f in os.walk(asteroidy_slozka):
     for file in f:
         asteroidy.append(os.path.join(r, file))
 
-# Přidání lodi do hracího pole
-lod = VesmirnaLod()
-lode.append(lod)
-# Přidání asteroidů do hracího pole
+# přidání vesmírné lodi do hracího pole
+lod1 = VesmirnaLod()
+lode.append(lod1)
+# přidání asteroidů do hracího pole
 for i in range(5):
     objekty.append(Asteroid())
 
