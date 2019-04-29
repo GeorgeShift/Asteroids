@@ -11,9 +11,11 @@ SIRKA = 800
 VYSKA = 600
 RYCHLOST_OTACENI = 360  # stupně/s
 AKCELERACE = 200  # pixely/s
+RYCHLOST_STRELBY = 200
 
 # obrázky objektů
 obrazek_lodi = 'ship.png'
+obrazek_laseru = 'Lasers\\laserBlue01.png'
 asteroidy_slozka = 'Meteors\\'
 asteroidy = []
 
@@ -30,7 +32,7 @@ class VesmirnyObjekt:
     def __init__(self, obrazek):
         # načtení obrázku ze souboru
         obrazek = pyglet.image.load(obrazek)
-        # nastavní "kotvy" obrázku na střed
+        # nastaví "kotvy" obrázku na střed
         obrazek.anchor_x = obrazek.width // 2
         obrazek.anchor_y = obrazek.height // 2
         # výpočet poloměru objektu
@@ -39,9 +41,15 @@ class VesmirnyObjekt:
             obrazek, self.x,
             self.y, batch=batch)
 
-    def delete(self, lod):
-        lode[0].sprite.delete()
-        lode.remove(lod)
+    def sestreleni_laserem(self):
+        self.delete()
+
+    def delete(self):
+        self.sprite.delete()
+        if type(self) == VesmirnaLod:
+            lode.remove(self)
+        else:
+            objekty.remove(self)
 
     def tick(self, dt):
         rotace_rad = math.radians(-self.sprite.rotation + 90)
@@ -59,6 +67,34 @@ class VesmirnyObjekt:
         self.sprite.x = self.x
         self.sprite.y = self.y
         self.sprite.rotation = self.rotace
+
+
+class Laser(VesmirnyObjekt):
+    """ Třída reprezentující laserový paprsek"""
+    def __init__(self, x, y, rychlost, rotace):
+        self.x = x
+        self.y = y
+        self.rychlost = rychlost + RYCHLOST_STRELBY
+        self.rotace = rotace
+        self.cas = (SIRKA + 200) // self.rychlost
+        super().__init__(obrazek_laseru)
+
+    def tick(self, dt):
+        for objekt in objekty:
+            if type(objekt) == Asteroid:
+                vzdalenost_x = abs(self.x - objekt.x)
+                vzdalenost_y = abs(self.y - objekt.y)
+                vzdalenost = math.sqrt(vzdalenost_x**2 + vzdalenost_y**2)
+                if vzdalenost < abs(self.radius + objekt.radius):
+                    self.delete()
+                    objekt.sestreleni_laserem()
+                    return
+
+        self.cas -= dt
+        if self.cas < 0:
+            self.delete()
+            return
+        super().tick(dt)
 
 
 class Asteroid(VesmirnyObjekt):
@@ -87,13 +123,14 @@ class Asteroid(VesmirnyObjekt):
         super().tick(dt)
 
     def srazka_s_lodi(self, lod):
-        self.delete(lod)
+        lod.delete()
 
 
 class VesmirnaLod(VesmirnyObjekt):
     """ Třída reprezentující vesmírnou loď"""
     def __init__(self):
         obrazek = obrazek_lodi
+        self.obnoveni_laseru = 0.3
         self.rychlost = 0
         self.rotace = 0
         # nastavení souradnic obrázku na střed hrací plochy
@@ -103,6 +140,10 @@ class VesmirnaLod(VesmirnyObjekt):
 
     # obsluha posouvání, natáčení a ovládání raketky
     def tick(self, dt):
+        self.obnoveni_laseru -= dt
+        if self.obnoveni_laseru < 0:
+            self.obnoveni_laseru = 0
+
         if 'nahoru' in stisknute_klavesy:
             self.rychlost += dt * AKCELERACE
         if 'dolu' in stisknute_klavesy:
@@ -113,6 +154,9 @@ class VesmirnaLod(VesmirnyObjekt):
             self.rotace -= RYCHLOST_OTACENI * dt
         if 'doprava' in stisknute_klavesy:
             self.rotace += RYCHLOST_OTACENI * dt
+        if 'mezernik' in stisknute_klavesy and self.obnoveni_laseru == 0:
+            objekty.append(Laser(self.x, self.y, self.rychlost, self.rotace))
+            self.obnoveni_laseru = 0.3
         super().tick(dt)
 
 
@@ -136,6 +180,8 @@ def stisk_klavesy(symbol, modifikatory):
         stisknute_klavesy.add('doleva')
     if symbol == key.RIGHT:
         stisknute_klavesy.add('doprava')
+    if symbol == key.SPACE:
+        stisknute_klavesy.add('mezernik')
 
 
 def pusteni_klavesy(symbol, modifikatory):
@@ -147,6 +193,8 @@ def pusteni_klavesy(symbol, modifikatory):
         stisknute_klavesy.discard('doleva')
     if symbol == key.RIGHT:
         stisknute_klavesy.discard('doprava')
+    if symbol == key.SPACE:
+        stisknute_klavesy.discard('mezernik')
 
 
 def obnov_stav(dt):
